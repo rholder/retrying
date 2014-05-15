@@ -75,18 +75,20 @@ def retry(*dargs, **dkw):
     """
     # support both @retry and @retry() as valid syntax
     if len(dargs) == 1 and callable(dargs[0]):
+        retryer = Retrying()
         def wrap_simple(f):
             def wrapped_f(*args, **kw):
-                return Retrying().call(f, *args, **kw)
+                return retryer(f, *args, **kw)
 
             return wrapped_f
 
         return wrap_simple(dargs[0])
 
     else:
+        retryer = Retrying(*dargs, **dkw)
         def wrap(f):
             def wrapped_f(*args, **kw):
-                return Retrying(*dargs, **dkw).call(f, *args, **kw)
+                return retryer(f, *args, **kw)
 
             return wrapped_f
 
@@ -168,6 +170,17 @@ class Retrying(object):
 
         self._wrap_exception = wrap_exception
 
+        self._attempt_number = 0
+        self._start_time = None
+
+    @property
+    def attempts(self):
+        return self._attempt_number
+
+    @property
+    def start_time(self):
+        return self._start_time
+
     def stop_after_attempt(self, previous_attempt_number, delay_since_first_attempt_ms):
         """Stop after the previous attempt >= stop_max_attempt_number."""
         return previous_attempt_number >= self._stop_max_attempt_number
@@ -222,27 +235,28 @@ class Retrying(object):
 
         return reject
 
-    def call(self, fn, *args, **kwargs):
-        start_time = int(round(time.time() * 1000))
-        attempt_number = 1
+    def __call__(self, fn, *args, **kwargs):
+        self._start_time = int(round(time.time() * 1000))
+        self._attempt_number = 1
         while True:
             try:
-                attempt = Attempt(fn(*args, **kwargs), attempt_number, False)
+                attempt = Attempt(fn(*args, **kwargs), self._attempt_number, False)
             except:
                 tb = sys.exc_info()
-                attempt = Attempt(tb, attempt_number, True)
+                attempt = Attempt(tb, self._attempt_number, True)
 
             if not self.should_reject(attempt):
                 return attempt.get(self._wrap_exception)
 
-            delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
-            if self.stop(attempt_number, delay_since_first_attempt_ms):
+            delay_since_first_attempt_ms = int(round(time.time() * 1000)) - self._start_time
+            if self.stop(self._attempt_number, delay_since_first_attempt_ms):
                 raise RetryError(attempt)
+
             else:
-                sleep = self.wait(attempt_number, delay_since_first_attempt_ms)
+                sleep = self.wait(self._attempt_number, delay_since_first_attempt_ms)
                 time.sleep(sleep / 1000.0)
 
-            attempt_number += 1
+            self._attempt_number += 1
 
 class Attempt(object):
     """
