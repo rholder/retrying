@@ -237,7 +237,9 @@ class Retrying(object):
 
             delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
             if self.stop(attempt_number, delay_since_first_attempt_ms):
-                raise RetryError(attempt)
+                # Call the original attempt, since past attempt num
+                # Allows orignal error to bubble up
+                attempt.get()
             else:
                 sleep = self.wait(attempt_number, delay_since_first_attempt_ms)
                 time.sleep(sleep / 1000.0)
