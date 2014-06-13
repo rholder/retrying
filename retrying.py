@@ -71,7 +71,9 @@ MAX_WAIT = 1073741823
 
 def retry(*dargs, **dkw):
     """
-    TODO comment
+    Decorator function that instantiates the Retry object
+    @param *dargs: positional arguments passed to Retry object
+    @param **dkw: keyword arguments passed to the Retry object
     """
     # support both @retry and @retry() as valid syntax
     if len(dargs) == 1 and callable(dargs[0]):
@@ -92,6 +94,7 @@ def retry(*dargs, **dkw):
 
         return wrap
 
+def_arg = lambda default, arg: default if arg is None else arg
 
 class Retrying(object):
 
@@ -107,15 +110,15 @@ class Retrying(object):
                  retry_on_result=None,
                  wrap_exception=False):
 
-        self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
-        self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
-        self._wait_fixed = 1000 if wait_fixed is None else wait_fixed
-        self._wait_random_min = 0 if wait_random_min is None else wait_random_min
-        self._wait_random_max = 1000 if wait_random_max is None else wait_random_max
-        self._wait_incrementing_start = 0 if wait_incrementing_start is None else wait_incrementing_start
-        self._wait_incrementing_increment = 100 if wait_incrementing_increment is None else wait_incrementing_increment
-        self._wait_exponential_multiplier = 1 if wait_exponential_multiplier is None else wait_exponential_multiplier
-        self._wait_exponential_max = MAX_WAIT if wait_exponential_max is None else wait_exponential_max
+        self._stop_max_attempt_number = def_arg(5, stop_max_attempt_number)
+        self._stop_max_delay = def_arg(100, stop_max_delay)
+        self._wait_fixed = def_arg(1000, wait_fixed)
+        self._wait_random_min = def_arg(0, wait_random_min)
+        self._wait_random_max = def_arg(1000, wait_random_max)
+        self._wait_incrementing_start = def_arg(0, wait_incrementing_start)
+        self._wait_incrementing_increment = def_arg(100, wait_incrementing_increment)
+        self._wait_exponential_multiplier = def_arg(1, wait_exponential_multiplier)
+        self._wait_exponential_max = def_arg(MAX_WAIT, wait_exponential_max)
 
         # TODO add chaining of stop behaviors
         # stop behavior
