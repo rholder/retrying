@@ -287,6 +287,18 @@ def _retryable_test_with_exception_type_custom_attempt_limit(thing):
 def _retryable_test_with_exception_type_custom_attempt_limit_wrap(thing):
     return thing.go()
 
+@retry(on_exception=IOError)
+def _retryable_test_on_ioerror(thing):
+    return thing.go()
+
+@retry(on_exception=NameError)
+def _retryable_test_on_name_error(thing):
+    return thing.go()
+
+@retry(on_exception=(IOError, NameError))
+def _retryable_test_on_ioerror_or_name_error(thing):
+    return thing.go()
+
 class TestDecoratorWrapper(unittest.TestCase):
 
     def test_with_wait(self):
@@ -408,6 +420,33 @@ class TestDecoratorWrapper(unittest.TestCase):
         self.assertTrue(_retryable_default_f(NoNameErrorAfterCount(5)))
         self.assertTrue(_retryable_default(NoCustomErrorAfterCount(5)))
         self.assertTrue(_retryable_default_f(NoCustomErrorAfterCount(5)))
+
+    def test_on_exception_success(self):
+        """
+        The _retryable_test_on_ioerror method is setup to retry only on IOError
+        exceptions. The NoIOErrorAfterCount will raise this, and it will be
+        retried.
+        """
+        self.assertTrue(_retryable_test_on_ioerror(NoIOErrorAfterCount(5)))
+
+    def test_on_exception_fail(self):
+        """
+        The _retryable_test_on_name_error method is setup to retry only on
+        NameError. The NoIOErrorAfterCount raises an IOError and thus the
+        exception is propagated.
+        """
+        self.assertRaises(
+            IOError,
+            _retryable_test_on_name_error, NoIOErrorAfterCount(1))
+
+    def test_on_exception_fail(self):
+        """
+        The _retryable_test_on_name_error method is setup to retry only on
+        NameError. The NoIOErrorAfterCount raises an IOError and thus the
+        exception is propagated.
+        """
+        self.assertTrue(_retryable_test_on_ioerror_or_name_error, NoIOErrorAfterCount(1))
+        self.assertTrue(_retryable_test_on_ioerror_or_name_error, NoNameErrorAfterCount(1))
 
 if __name__ == '__main__':
     unittest.main()

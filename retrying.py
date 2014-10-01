@@ -86,7 +86,8 @@ class Retrying(object):
                  retry_on_result=None,
                  wrap_exception=False,
                  stop_func=None,
-                 wait_func=None):
+                 wait_func=None,
+                 on_exception=Exception):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -97,6 +98,7 @@ class Retrying(object):
         self._wait_incrementing_increment = 100 if wait_incrementing_increment is None else wait_incrementing_increment
         self._wait_exponential_multiplier = 1 if wait_exponential_multiplier is None else wait_exponential_multiplier
         self._wait_exponential_max = MAX_WAIT if wait_exponential_max is None else wait_exponential_max
+        self._on_exception = on_exception
 
         # TODO add chaining of stop behaviors
         # stop behavior
@@ -215,7 +217,7 @@ class Retrying(object):
         while True:
             try:
                 attempt = Attempt(fn(*args, **kwargs), attempt_number, False)
-            except:
+            except self._on_exception:
                 tb = sys.exc_info()
                 attempt = Attempt(tb, attempt_number, True)
 

@@ -2,6 +2,12 @@
 
 History
 -------
+
+1.4.X (unreleased)
+++++++++++++++++++
+- Add on_exception parameter to catch only specific exceptions.
+- By default only catch subclasses of Exception rather than BaseException.
+
 1.3.1 (2014-09-30)
 ++++++++++++++++++
 - Add requirements.txt to MANIFEST.in to fix pip installs

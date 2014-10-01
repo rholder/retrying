@@ -113,7 +113,20 @@ Then again, it's hard to beat exponential backoff when retrying distributed serv
         print "Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds, then 10 seconds afterwards"
 
 
-We have a few options for dealing with retries that raise specific or general exceptions, as in the cases here.
+We can retry the method on specific exceptions (and their subclasses)
+
+.. code-block:: python
+
+    @retry(on_exception=IOError)
+    def might_io_error():
+        print "Retry forever with no wait if an IOError occurs, raise any other errors"
+
+    @retry(on_exception=(IOError, ValueError))
+    def might_io_error_or_value_error():
+        print "Retry forever with no wait if an IOError or ValueError occurs, raise any other errors"
+
+
+Alternatively we have a few options for dealing with retries that raise specific or general exceptions, as in the cases here.
 
 .. code-block:: python
 
@@ -128,6 +141,7 @@ We have a few options for dealing with retries that raise specific or general ex
     @retry(retry_on_exception=retry_if_io_error, wrap_exception=True)
     def only_raise_retry_error_when_not_io_error():
         print "Retry forever with no wait if an IOError occurs, raise any other errors wrapped in RetryError"
+
 
 We can also use the result of the function to alter the behavior of retrying.
 
