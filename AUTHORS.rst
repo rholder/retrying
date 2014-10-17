@@ -21,6 +21,7 @@ Patches and Suggestions
 - Josh Marshall
 - Joshua Harlow
 - Justin Turner Arthur
+- Kerey Roper
 - Monty Taylor
 - Pierre-Yves Chibon
 - Rees Dooley
