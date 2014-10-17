@@ -10,21 +10,22 @@ Development Lead
 Patches and Suggestions
 ```````````````````````
 
-- Anthony McClosky
-- Jason Dunkelberger
-- Justin Turner Arthur
-- J Derek Wilson
 - Alex Kuang
-- Simon Dollé
+- Anthony McClosky
+- Daniel Nephin
+- Dougal Matthews
+- Haïkel Guémar
+- J Derek Wilson
+- James Page
+- Jason Dunkelberger
+- Josh Marshall
+- Joshua Harlow
+- Justin Turner Arthur
+- Kerey Roper
+- Monty Taylor
+- Pierre-Yves Chibon
 - Rees Dooley
 - Saul Shanabrook
-- Daniel Nephin
 - Simeon Visser
-- Joshua Harlow
-- Pierre-Yves Chibon
-- Haïkel Guémar
+- Simon Dollé
 - Thomas Goirand
-- James Page
-- Josh Marshall
-- Dougal Matthews
-- Monty Taylor

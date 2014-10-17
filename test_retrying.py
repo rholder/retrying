@@ -11,13 +11,14 @@
 ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
-
+import random
 import time
 import unittest
 
 from retrying import RetryError
 from retrying import Retrying
 from retrying import retry
+
 
 class TestStopConditions(unittest.TestCase):
 
@@ -45,6 +46,10 @@ class TestStopConditions(unittest.TestCase):
         self.assertFalse(r.stop(1, 3))
         self.assertFalse(r.stop(100, 99))
         self.assertTrue(r.stop(101, 101))
+
+
+def randomized_exponential(base_delay):
+    return lambda attempt, delay_since_first_attempt_ms: random.randint(0, 2**(attempt-1)*base_delay)
 
 
 class TestWaitConditions(unittest.TestCase):
@@ -126,6 +131,73 @@ class TestWaitConditions(unittest.TestCase):
         self.assertEqual(r.wait(1, 5), 5)
         self.assertEqual(r.wait(2, 11), 22)
         self.assertEqual(r.wait(10, 100), 1000)
+
+    def test_randomized_exponential(self):
+        # step = 2
+        r = Retrying(wait_func=randomized_exponential(2))
+        greater_than_mid = 0
+        for i in range(0, 100):
+            wait = r.wait(1, 2)
+            self.assertTrue(wait >= 0)
+            self.assertTrue(wait <= 2)
+            if wait >= 1:
+                greater_than_mid += 1
+        self.assertTrue(greater_than_mid > 0)
+        self.assertTrue(greater_than_mid < 100)
+        greater_than_mid = 0
+        for i in range(0, 100):
+            wait = r.wait(2, 2)
+            self.assertTrue(wait >= 0)
+            self.assertTrue(wait <= 4)
+            if wait >= 1:
+                greater_than_mid += 1
+        self.assertTrue(greater_than_mid > 0)
+        self.assertTrue(greater_than_mid < 100)
+        greater_than_mid = 0
+        for i in range(0, 100):
+            wait = r.wait(3, 2)
+            self.assertTrue(wait >= 0)
+            self.assertTrue(wait <= 8)
+            if wait >= 1:
+                greater_than_mid += 1
+        self.assertTrue(greater_than_mid > 0)
+        self.assertTrue(greater_than_mid < 100)
+
+        # step = 1
+        r = Retrying(wait_func=randomized_exponential(1))
+        greater_than_mid = 0
+        for i in range(0, 100):
+            wait = r.wait(1, 1)
+            self.assertTrue(wait >= 0)
+            self.assertTrue(wait <= 1)
+            if wait >= 1:
+                greater_than_mid += 1
+        self.assertTrue(greater_than_mid > 0)
+        self.assertTrue(greater_than_mid < 100)
+        greater_than_mid = 0
+        for i in range(0, 100):
+            wait = r.wait(2, 1)
+            self.assertTrue(wait >= 0)
+            self.assertTrue(wait <= 2)
+            if wait >= 1:
+                greater_than_mid += 1
+        self.assertTrue(greater_than_mid > 0)
+        self.assertTrue(greater_than_mid < 100)
+        greater_than_mid = 0
+        for i in range(0, 100):
+            wait = r.wait(3, 1)
+            self.assertTrue(wait >= 0)
+            self.assertTrue(wait <= 4)
+            if wait >= 2:
+                greater_than_mid += 1
+        self.assertTrue(greater_than_mid > 0)
+        self.assertTrue(greater_than_mid < 100)
+
+        # step = 0
+        r = Retrying(wait_func=randomized_exponential(0))
+        self.assertEqual(0, r.wait(1, 0))
+        self.assertEqual(0, r.wait(2, 0))
+        self.assertEqual(0, r.wait(3, 0))
 
 
 class NoneReturnUntilAfterCount:
