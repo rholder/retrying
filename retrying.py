@@ -46,7 +46,11 @@ def retry(*dargs, **dkw):
 
             @six.wraps(f)
             def wrapped_f(*args, **kw):
-                return Retrying(*dargs, **dkw).call(f, *args, **kw)
+                # if dargs contains more than one argument,
+                # check first one is an integer, then assign it to 'stop_max_attempt_number'
+                if len(dargs) >= 1 and isinstance(dargs[0], int):
+                    dkw['stop_max_attempt_number'] = dargs[0]
+                return Retrying(**dkw).call(f, *args, **kw)
 
             return wrapped_f
 
