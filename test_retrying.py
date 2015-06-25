@@ -434,5 +434,33 @@ class TestDecoratorWrapper(unittest.TestCase):
         self.assertTrue(_retryable_default(NoCustomErrorAfterCount(5)))
         self.assertTrue(_retryable_default_f(NoCustomErrorAfterCount(5)))
 
+
+class TestDirectUsage(unittest.TestCase):
+    def test_direct_call(self):
+        value = 1
+        def working():
+            return value
+
+        r = Retrying()
+        self.assertFalse(r.start_time)
+        self.assertFalse(r.attempts)
+        result = r(working)
+        self.assertEqual(value, result)
+        self.assertEqual(1, r.attempts)
+
+    def test_direct_call_with_args(self):
+        value = 1
+        def working(value):
+            return value
+
+        r = Retrying()
+        self.assertFalse(r.start_time)
+        self.assertFalse(r.attempts)
+        result = r(working, value)
+        self.assertEqual(value, result)
+        self.assertEqual(1, r.attempts)
+        self.assertTrue(r.start_time)
+
+
 if __name__ == '__main__':
     unittest.main()
