@@ -2,6 +2,30 @@
 
 History
 -------
+1.3.3 (2014-12-14)
+++++++++++++++++++
+- Add minimum six version of 1.7.0 since anything less will break things
+
+1.3.2 (2014-11-09)
+++++++++++++++++++
+- Ensure we wrap the decorated functions to prevent information loss
+- Allow a jitter value to be passed in
+
+1.3.1 (2014-09-30)
+++++++++++++++++++
+- Add requirements.txt to MANIFEST.in to fix pip installs
+
+1.3.0 (2014-09-30)
+++++++++++++++++++
+- Add upstream six dependency, remove embedded six functionality
+
+1.2.3 (2014-08-25)
+++++++++++++++++++
+- Add support for custom wait and stop functions
+
+1.2.2 (2014-06-20)
+++++++++++++++++++
+- Bug fix to not raise a RetryError on failure when exceptions aren't being wrapped
 
 1.2.1 (2014-05-05)
 ++++++++++++++++++
