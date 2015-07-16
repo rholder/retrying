@@ -68,7 +68,8 @@ class Retrying(object):
                  wrap_exception=False,
                  stop_func=None,
                  wait_func=None,
-                 wait_jitter_max=None):
+                 wait_jitter_max=None,
+                 sleep_func=time.sleep):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -137,6 +138,7 @@ class Retrying(object):
             self._retry_on_result = retry_on_result
 
         self._wrap_exception = wrap_exception
+        self._sleep_func = sleep_func
 
     def stop_after_attempt(self, previous_attempt_number, delay_since_first_attempt_ms):
         """Stop after the previous attempt >= stop_max_attempt_number."""
@@ -217,7 +219,7 @@ class Retrying(object):
                 if self._wait_jitter_max:
                     jitter = random.random() * self._wait_jitter_max
                     sleep = sleep + max(0, jitter)
-                time.sleep(sleep / 1000.0)
+                self.sleep_func(sleep / 1000.0)
 
             attempt_number += 1
 
