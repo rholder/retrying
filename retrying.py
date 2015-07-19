@@ -219,7 +219,7 @@ class Retrying(object):
                 if self._wait_jitter_max:
                     jitter = random.random() * self._wait_jitter_max
                     sleep = sleep + max(0, jitter)
-                self.sleep_func(sleep / 1000.0)
+                self._sleep_func(sleep / 1000.0)
 
             attempt_number += 1
 
