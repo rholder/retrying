@@ -124,17 +124,20 @@ class Retrying(object):
             self.wait = getattr(self, wait)
 
         # retry on exception filter
-        if retry_on_exception is None:
-            self._retry_on_exception = self.always_reject
-        else:
-            self._retry_on_exception = retry_on_exception
+        #  if retry_on_exception is None:
+            #  self._retry_on_exception = self.always_reject
+        #  else:
+            #  self._retry_on_exception = retry_on_exception
 
         # TODO simplify retrying by Exception types
         # retry on result filter
-        if retry_on_result is None:
-            self._retry_on_result = self.never_reject
-        else:
-            self._retry_on_result = retry_on_result
+        #  if retry_on_result is None:
+            #  self._retry_on_result = self.never_reject
+        #  else:
+            #  self._retry_on_result = retry_on_result
+
+        self._retry_on_exception = locals().get('retry_on_exception') or self.always_reject
+        self._retry_on_result = locals().get('retry_on_result') or self.never_reject
 
         self._wrap_exception = wrap_exception
 
