@@ -112,6 +112,16 @@ Then again, it's hard to beat exponential backoff when retrying distributed serv
     def wait_exponential_1000():
         print "Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds, then 10 seconds afterwards"
 
+One can also use attempt markers to set specific wait times that into effect on a said attempt number.
+Markers are a set of tuples where the 1st element is the attempt (must be greater than 1) and the 2nd element
+is the number of ms to wait. A said marker goes into effect on it's attempt and is active until
+another is hit.
+
+.. code-block:: python
+
+    @retry(wait_markers=[(1, 100), (5, 1000), (10, 4000)], stop_max_attempt_number=20)
+    def wait_with_markers():
+        print "Wait 100ms attempts 1-5, 1000ms 5-10 and 4000ms from attempts 10-20 stopping after 20 attempts"
 
 We have a few options for dealing with retries that raise specific or general exceptions, as in the cases here.
 
