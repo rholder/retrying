@@ -144,6 +144,19 @@ We can also use the result of the function to alter the behavior of retrying.
 
 Any combination of stop, wait, etc. is also supported to give you the freedom to mix and match.
 
+It's also possible to provide a custom hook function that'll be called on each re-attempt
+of a retry prior to the next wait. The return value of this hook is not used.
+
+.. code-block:: python
+
+    def log_retry(next_wait_time, prev_attempt, time_since_first_attempt):
+        log.warning("Operation failed. Trying again in %s ms" % next_wait_time)
+
+    @retry(wait_event_func=log_retry)
+    def logged_on_each_retry():
+        my_operation()
+
+
 Contribute
 ----------
 
