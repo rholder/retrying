@@ -22,6 +22,9 @@ import traceback
 # sys.maxint / 2, since Python 3.2 doesn't have a sys.maxint...
 MAX_WAIT = 1073741823
 
+EXP_FULL_JITTER_BASE = 1
+EXP_FULL_JITTER_MAX = 10
+
 
 def _retry_if_exception_of_type(retryable_types):
     def _retry_if_exception_these_types(exception):
@@ -70,6 +73,7 @@ class Retrying(object):
                  wait_incrementing_start=None, wait_incrementing_increment=None,
                  wait_incrementing_max=None,
                  wait_exponential_multiplier=None, wait_exponential_max=None,
+                 wait_exponential_full_jitter_base=None, wait_exponential_full_jitter_max=None,
                  retry_on_exception=None,
                  retry_on_result=None,
                  wrap_exception=False,
@@ -89,6 +93,8 @@ class Retrying(object):
         self._wait_exponential_multiplier = 1 if wait_exponential_multiplier is None else wait_exponential_multiplier
         self._wait_exponential_max = MAX_WAIT if wait_exponential_max is None else wait_exponential_max
         self._wait_incrementing_max = MAX_WAIT if wait_incrementing_max is None else wait_incrementing_max
+        self._wait_exponential_full_jitter_base = EXP_FULL_JITTER_BASE if wait_exponential_full_jitter_base is None else wait_exponential_full_jitter_base
+        self._wait_exponential_full_jitter_max = EXP_FULL_JITTER_MAX if wait_exponential_full_jitter_max is None else wait_exponential_full_jitter_max
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
@@ -125,6 +131,9 @@ class Retrying(object):
 
         if wait_exponential_multiplier is not None or wait_exponential_max is not None:
             wait_funcs.append(self.exponential_sleep)
+
+        if wait_exponential_full_jitter_base is not None or wait_exponential_full_jitter_max is not None:
+            wait_funcs.append(self.exponential_with_full_jitter_sleep)
 
         if wait_func is not None:
             self.wait = wait_func
@@ -195,6 +204,11 @@ class Retrying(object):
             result = self._wait_exponential_max
         if result < 0:
             result = 0
+        return result
+
+    def exponential_with_full_jitter_sleep(self, previous_attempt_number, delay_since_first_attempt_ms):
+        result = random.uniform(0, min(self._wait_exponential_full_jitter_max,
+                                       self._wait_exponential_full_jitter_base * 2 ** previous_attempt_number))
         return result
 
     @staticmethod

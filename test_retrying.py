@@ -18,6 +18,7 @@ import unittest
 from retrying import RetryError
 from retrying import Retrying
 from retrying import retry
+from retrying import EXP_FULL_JITTER_BASE, EXP_FULL_JITTER_MAX
 
 
 class TestStopConditions(unittest.TestCase):
@@ -122,6 +123,62 @@ class TestWaitConditions(unittest.TestCase):
         self.assertEqual(r.wait(6, 0), 50000)
         self.assertEqual(r.wait(7, 0), 50000)
         self.assertEqual(r.wait(50, 0), 50000)
+
+    def test_exp_with_full_jitter_for_various_attempts(self):
+        r = Retrying(wait_exponential_full_jitter_base=EXP_FULL_JITTER_BASE)
+
+        for attempt in range(0, 5):
+            max_wait_time_for_this_attempt = min(EXP_FULL_JITTER_MAX,
+                                                 EXP_FULL_JITTER_BASE * 2 ** attempt)
+            times = set()
+            for _ in range(100):
+                times.add(r.wait(attempt, 0))
+            for t in times:
+                self.assertTrue(t >= 0)
+                self.assertTrue(t <= max_wait_time_for_this_attempt)
+
+    def test_exp_with_full_jitter_for_various_attempts_with_custom_base(self):
+        custom_base = 20
+        r = Retrying(wait_exponential_full_jitter_base=custom_base)
+
+        for attempt in range(0, 5):
+            max_wait_time_for_this_attempt = min(EXP_FULL_JITTER_MAX,
+                                                 custom_base * 2 ** attempt)
+            times = set()
+            for _ in range(100):
+                times.add(r.wait(attempt, 0))
+            for t in times:
+                self.assertTrue(t >= 0)
+                self.assertTrue(t <= max_wait_time_for_this_attempt)
+
+    def test_exp_with_full_jitter_for_various_attempts_with_custom_max(self):
+        custom_max = 4
+        r = Retrying(wait_exponential_full_jitter_max=custom_max)
+
+        for attempt in range(0, 5):
+            max_wait_time_for_this_attempt = min(custom_max,
+                                                 EXP_FULL_JITTER_BASE * 2 ** attempt)
+            times = set()
+            for _ in range(100):
+                times.add(r.wait(attempt, 0))
+            for t in times:
+                self.assertTrue(t >= 0)
+                self.assertTrue(t <= max_wait_time_for_this_attempt)
+
+    def test_exp_with_full_jitter_for_various_attempts_with_custom_base_and_max(self):
+        custom_base = 1.5
+        custom_max = 4
+        r = Retrying(wait_exponential_full_jitter_base=custom_base, wait_exponential_full_jitter_max=custom_max)
+
+        for attempt in range(0, 5):
+            max_wait_time_for_this_attempt = min(custom_max,
+                                                 custom_base * 2 ** attempt)
+            times = set()
+            for _ in range(100):
+                times.add(r.wait(attempt, 0))
+            for t in times:
+                self.assertTrue(t >= 0)
+                self.assertTrue(t <= max_wait_time_for_this_attempt)
 
     def test_legacy_explicit_wait_type(self):
         Retrying(wait="exponential_sleep")
