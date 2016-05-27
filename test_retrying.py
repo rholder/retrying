@@ -470,7 +470,7 @@ class TestRetryEvent(unittest.TestCase):
 
     def test_default_wait_hook_init(self):
         retrying = Retrying()
-        self.assertIsNotNone(retrying._wait_event_func)
+        self.assertTrue(retrying._wait_event_func)
         self.assertNotEqual(self._mark_event_call, retrying._wait_event_func)
 
 
