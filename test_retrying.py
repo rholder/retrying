@@ -132,6 +132,20 @@ class TestWaitConditions(unittest.TestCase):
         self.assertEqual(r.wait(2, 11), 22)
         self.assertEqual(r.wait(10, 100), 1000)
 
+    def test_marked_wait(self):
+        r = Retrying(wait_markers=[(1, 1), (2, 2), (4, 4)])
+        self.assertEqual(r.wait(1, 0), 1)
+        self.assertEqual(r.wait(2, 0), 2)
+        self.assertEqual(r.wait(3, 0), 2)
+        self.assertEqual(r.wait(4, 0), 4)
+        self.assertEqual(r.wait(5, 0), 4)
+        self.assertEqual(r.wait(6, 0), 4)
+
+    def test_marked_wait_invalid_attempt(self):
+        self.assertRaises(IndexError, Retrying, wait_markers=[(0, 1)])
+
+    def test_marked_wait_duplicate_attempt(self):
+        self.assertRaises(IndexError, Retrying, wait_markers=[(2, 1), (2, 2)])
 
 class NoneReturnUntilAfterCount:
     """

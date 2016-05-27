@@ -12,6 +12,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+import collections
 import random
 import six
 import sys
@@ -21,7 +22,7 @@ import traceback
 
 # sys.maxint / 2, since Python 3.2 doesn't have a sys.maxint...
 MAX_WAIT = 1073741823
-
+DEFAULT_MARKED_WAIT_MS = 1000
 
 def retry(*dargs, **dkw):
     """
@@ -63,6 +64,7 @@ class Retrying(object):
                  wait_random_min=None, wait_random_max=None,
                  wait_incrementing_start=None, wait_incrementing_increment=None,
                  wait_exponential_multiplier=None, wait_exponential_max=None,
+                 wait_markers=None,
                  retry_on_exception=None,
                  retry_on_result=None,
                  wrap_exception=False,
@@ -80,6 +82,10 @@ class Retrying(object):
         self._wait_exponential_multiplier = 1 if wait_exponential_multiplier is None else wait_exponential_multiplier
         self._wait_exponential_max = MAX_WAIT if wait_exponential_max is None else wait_exponential_max
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
+
+        if type(wait_markers) is list:
+            wait_markers = AttemptWaitMarkers(wait_markers)
+        self._wait_markers = wait_markers
 
         # TODO add chaining of stop behaviors
         # stop behavior
@@ -102,6 +108,8 @@ class Retrying(object):
         # TODO add chaining of wait behaviors
         # wait behavior
         wait_funcs = [lambda *args, **kwargs: 0]
+        if self._wait_markers is not None:
+            wait_funcs.append(self.marked_sleep)
         if wait_fixed is not None:
             wait_funcs.append(self.fixed_sleep)
 
@@ -176,6 +184,9 @@ class Retrying(object):
         if result < 0:
             result = 0
         return result
+
+    def marked_sleep(self, previous_attempt_number, delay_since_first_attempt_ms):
+        return self._wait_markers.wait_time(previous_attempt_number + 1)
 
     def never_reject(self, result):
         return False
@@ -265,3 +276,66 @@ class RetryError(Exception):
 
     def __str__(self):
         return "RetryError[{0}]".format(self.last_attempt)
+
+
+AttemptWaitMarker = collections.namedtuple('AttemptWaitMarker',
+                                           'attempt, wait')
+
+
+class AttemptWaitMarkers(object):
+    """A immutable set of AttemptWaitMarkers.
+
+    This class allows consumers to build sets of AttemptWaitMarker instances
+    that can then be used for the plateaued_wait retry. All markers
+    added to a instance of this class are validated to ensure there
+    are no duplicates and valid attempt values are used.
+    """
+
+    def __init__(self, markers, default_wait=DEFAULT_MARKED_WAIT_MS):
+        self._attempts = []
+        self._markers = {}
+        self._default_wait = default_wait
+
+        for marker in markers:
+            self._add(marker[0], marker[1])
+        self._attempts.sort()
+
+    @property
+    def default_wait(self):
+        return self._default_wait
+
+    def _add(self, at_attempt, wait_ms):
+        """Add an attempt marker with given values.
+
+        :param at_attempt: The attempt number to start using the wait.
+        :param wait_ms: The wait in ms to take effect at the
+        specified at_attempt.
+        :return: None
+        """
+        if at_attempt in self._attempts:
+            raise IndexError("Marker for attempt '%s' already exists."
+                             % at_attempt)
+        if at_attempt < 1:
+            raise IndexError("Marker attempt must be greater than 0, "
+                             "but is: %s" % at_attempt)
+
+        self._attempts.append(at_attempt)
+        self._markers[str(at_attempt)] = AttemptWaitMarker(at_attempt, wait_ms)
+
+    def wait_time(self, attempt):
+        """Retrieve the wait time for the given attempt.
+
+        :param attempt: The attempt number to get wait time for.
+        :return: The wait as specified by the set of markers for this instance.
+        A marker is in effect (its wait value is used) if its attempt
+        value is hit and remains in effect until the next marker is hit.
+        If no markers are in effect yet, the default_wait for this instance
+        is used.
+        """
+        last_marker = None
+        for attempt_marker in self._attempts:
+            if attempt <= attempt_marker:
+                break
+            last_marker = self._markers[str(attempt_marker)]
+        return (last_marker.wait if last_marker
+                else self.default_wait)
