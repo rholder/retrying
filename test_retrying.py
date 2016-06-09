@@ -252,7 +252,7 @@ def _retryable_test_with_stop(thing):
     return thing.go()
 
 
-@retry(retry_on_exception=retry_if_exception_of_type(IOError))
+@retry(retry_on_exception=(IOError,))
 def _retryable_test_with_exception_type_io(thing):
     return thing.go()
 
@@ -264,14 +264,14 @@ def _retryable_test_with_exception_type_io_wrap(thing):
 
 @retry(
     stop_max_attempt_number=3,
-    retry_on_exception=retry_if_exception_of_type(IOError))
+    retry_on_exception=(IOError,))
 def _retryable_test_with_exception_type_io_attempt_limit(thing):
     return thing.go()
 
 
 @retry(
     stop_max_attempt_number=3,
-    retry_on_exception=retry_if_exception_of_type(IOError),
+    retry_on_exception=(IOError,),
     wrap_exception=True)
 def _retryable_test_with_exception_type_io_attempt_limit_wrap(thing):
     return thing.go()
@@ -435,6 +435,41 @@ class TestDecoratorWrapper(unittest.TestCase):
         self.assertTrue(_retryable_default_f(NoCustomErrorAfterCount(5)))
 
 
+class TestBeforeAfterAttempts(unittest.TestCase):
+    _attempt_number = 0
+
+    def test_before_attempts(self):
+        TestBeforeAfterAttempts._attempt_number = 0
+
+        def _before(attempt_number):
+            TestBeforeAfterAttempts._attempt_number = attempt_number
+
+        @retry(wait_fixed = 1000, stop_max_attempt_number = 1, before_attempts = _before)
+        def _test_before():
+            pass
+        
+        _test_before()
+
+        self.assertTrue(TestBeforeAfterAttempts._attempt_number is 1)
+
+    def test_after_attempts(self):
+        TestBeforeAfterAttempts._attempt_number = 0
+
+        def _after(attempt_number):
+            TestBeforeAfterAttempts._attempt_number = attempt_number
+
+        @retry(wait_fixed = 100, stop_max_attempt_number = 3, after_attempts = _after)
+        def _test_after():
+            if TestBeforeAfterAttempts._attempt_number < 2:
+                raise Exception("testing after_attempts handler")
+            else:
+                pass
+        
+        _test_after()
+
+        self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
+
+
 class TestRetryEvent(unittest.TestCase):
 
     def setUp(self):
@@ -472,7 +507,6 @@ class TestRetryEvent(unittest.TestCase):
         retrying = Retrying()
         self.assertTrue(retrying._wait_event_func is not None)
         self.assertNotEqual(self._mark_event_call, retrying._wait_event_func)
-
 
 if __name__ == '__main__':
     unittest.main()
