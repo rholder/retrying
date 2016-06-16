@@ -434,6 +434,7 @@ class TestDecoratorWrapper(unittest.TestCase):
         self.assertTrue(_retryable_default(NoCustomErrorAfterCount(5)))
         self.assertTrue(_retryable_default_f(NoCustomErrorAfterCount(5)))
 
+
 class TestBeforeAfterAttempts(unittest.TestCase):
     _attempt_number = 0
 
@@ -467,6 +468,7 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         _test_after()
 
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
+
 
 if __name__ == '__main__':
     unittest.main()

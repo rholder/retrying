@@ -32,3 +32,4 @@ Patches and Suggestions
 - Jonathan Herriott
 - Job Evers
 - Cyrus Durgin
+- Boden Russell
