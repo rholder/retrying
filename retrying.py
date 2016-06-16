@@ -12,6 +12,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+import inspect
 import random
 import six
 import sys
@@ -77,8 +78,7 @@ class Retrying(object):
                  wait_func=None,
                  wait_jitter_max=None,
                  before_attempts=None,
-                 after_attempts=None,
-                 wait_event_func=None):
+                 after_attempts=None):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -91,7 +91,6 @@ class Retrying(object):
         self._wait_exponential_max = MAX_WAIT if wait_exponential_max is None else wait_exponential_max
         self._wait_incrementing_max = MAX_WAIT if wait_incrementing_max is None else wait_incrementing_max
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
-        self._wait_event_func = wait_event_func if wait_event_func is not None else lambda next_wait, attempts, delay: None
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
 
@@ -113,29 +112,29 @@ class Retrying(object):
         else:
             self.stop = getattr(self, stop)
 
-        # TODO add chaining of wait behaviors
-        # wait behavior
-        wait_funcs = [lambda *args, **kwargs: 0]
+        wait_funcs = CallChain(lambda *args, **kwargs: 0)
         if wait_fixed is not None:
-            wait_funcs.append(self.fixed_sleep)
+            wait_funcs += self.fixed_sleep
 
         if wait_random_min is not None or wait_random_max is not None:
-            wait_funcs.append(self.random_sleep)
+            wait_funcs += self.random_sleep
 
         if wait_incrementing_start is not None or wait_incrementing_increment is not None:
-            wait_funcs.append(self.incrementing_sleep)
+            wait_funcs += self.incrementing_sleep
 
         if wait_exponential_multiplier is not None or wait_exponential_max is not None:
-            wait_funcs.append(self.exponential_sleep)
+            wait_funcs += self.exponential_sleep
 
         if wait_func is not None:
-            self.wait = wait_func
+            wait_funcs += wait_func
 
         elif wait is None:
-            self.wait = lambda attempts, delay: max(f(attempts, delay) for f in wait_funcs)
+            wait_funcs += lambda attempts, delay, chain_results=None: max(chain_results)
 
         else:
-            self.wait = getattr(self, wait)
+            wait_funcs += getattr(self, wait)
+
+        self.wait = wait_funcs
 
         # retry on exception filter
         if retry_on_exception is None:
@@ -244,7 +243,6 @@ class Retrying(object):
                     raise RetryError(attempt)
             else:
                 sleep = self.wait(attempt_number, delay_since_first_attempt_ms)
-                self._wait_event_func(sleep, attempt_number, delay_since_first_attempt_ms)
                 if self._wait_jitter_max:
                     jitter = random.random() * self._wait_jitter_max
                     sleep = sleep + max(0, jitter)
@@ -284,6 +282,35 @@ class Attempt(object):
             return "Attempts: {0}, Error:\n{1}".format(self.attempt_number, "".join(traceback.format_tb(self.value[2])))
         else:
             return "Attempts: {0}, Value: {1}".format(self.attempt_number, self.value)
+
+
+class CallChain(object):
+
+    def __init__(self, *fns):
+        self._chain = []
+        for fn in fns:
+            self._assert_callable(fn)
+            self._chain.append(fn)
+
+    def __add__(self, other):
+        self._assert_callable(object)
+        self._chain.append(other)
+        return self
+
+    def __call__(self, *args, **kwargs):
+        results = []
+        for fn in self._chain:
+            if 'chain_results' in inspect.getargspec(fn).args:
+                fn_kwargs = dict(kwargs)
+                fn_kwargs['chain_results'] = results
+                results.append(fn(*args, **fn_kwargs))
+            else:
+                results.append(fn(*args, **kwargs))
+        return results[-1] if results else None
+
+    def _assert_callable(self, fn):
+        if not hasattr(fn, '__call__'):
+            raise TypeError("'%s' is not callable" % fn)
 
 
 class RetryError(Exception):

@@ -470,43 +470,5 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
 
 
-class TestRetryEvent(unittest.TestCase):
-
-    def setUp(self):
-        self._event_calls = []
-
-    def _mark_event_call(self, sleep_time, prev_attempt, since_first):
-        self._event_calls.append((sleep_time, prev_attempt, since_first))
-
-    def test_custom_wait_hook_init(self):
-        retrying = Retrying(wait_event_func=self._mark_event_call)
-        self.assertEqual(self._mark_event_call, retrying._wait_event_func)
-
-    def test_custom_wait_hook_call(self):
-
-        @retry(wait_event_func=self._mark_event_call, stop_max_attempt_number=4, wait_fixed=10)
-        def wait_with_events():
-            raise Exception()
-
-        self.assertRaises(Exception, wait_with_events)
-        self.assertEqual(3, len(self._event_calls))
-        for i in range(0, 3):
-            self.assertEqual(10, self._event_calls[i][0])
-            self.assertEqual(i + 1, self._event_calls[i][1])
-
-    def test_no_custom_wait_hook_call(self):
-
-        @retry(stop_max_attempt_number=4, wait_fixed=10)
-        def wait_with_events():
-            raise Exception()
-
-        self.assertRaises(Exception, wait_with_events)
-        self.assertEqual(0, len(self._event_calls))
-
-    def test_default_wait_hook_init(self):
-        retrying = Retrying()
-        self.assertTrue(retrying._wait_event_func is not None)
-        self.assertNotEqual(self._mark_event_call, retrying._wait_event_func)
-
 if __name__ == '__main__':
     unittest.main()
