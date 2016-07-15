@@ -77,7 +77,8 @@ class Retrying(object):
                  wait_func=None,
                  wait_jitter_max=None,
                  before_attempts=None,
-                 after_attempts=None):
+                 after_attempts=None,
+                 wait_aggregation_func=None):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -111,7 +112,6 @@ class Retrying(object):
         else:
             self.stop = getattr(self, stop)
 
-        # TODO add chaining of wait behaviors
         # wait behavior
         wait_funcs = [lambda *args, **kwargs: 0]
         if wait_fixed is not None:
@@ -130,7 +130,8 @@ class Retrying(object):
             self.wait = wait_func
 
         elif wait is None:
-            self.wait = lambda attempts, delay: max(f(attempts, delay) for f in wait_funcs)
+            wait_aggregation_func = max if wait_aggregation_func is None else wait_aggregation_func
+            self.wait = lambda attempts, delay: wait_aggregation_func(f(attempts, delay) for f in wait_funcs)
 
         else:
             self.wait = getattr(self, wait)

@@ -123,6 +123,18 @@ class TestWaitConditions(unittest.TestCase):
         self.assertEqual(r.wait(7, 0), 50000)
         self.assertEqual(r.wait(50, 0), 50000)
 
+    def test_wait_aggregation_func(self):
+        r = Retrying(wait_exponential_max=50000, wait_exponential_multiplier=1000, wait_fixed=1,
+                     wait_aggregation_func=sum)
+        self.assertEqual(r.wait(1, 0), 2001)
+        self.assertEqual(r.wait(2, 0), 4001)
+        self.assertEqual(r.wait(3, 0), 8001)
+        self.assertEqual(r.wait(4, 0), 16001)
+        self.assertEqual(r.wait(5, 0), 32001)
+        self.assertEqual(r.wait(6, 0), 50001)
+        self.assertEqual(r.wait(7, 0), 50001)
+        self.assertEqual(r.wait(50, 0), 50001)
+
     def test_legacy_explicit_wait_type(self):
         Retrying(wait="exponential_sleep")
 
