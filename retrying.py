@@ -76,6 +76,8 @@ class Retrying(object):
                  stop_func=None,
                  wait_func=None,
                  wait_jitter_max=None,
+                 wait_exp_decorr_jitter_base=None,
+                 wait_exp_decorr_jitter_max=None,
                  before_attempts=None,
                  after_attempts=None):
 
@@ -90,8 +92,26 @@ class Retrying(object):
         self._wait_exponential_max = MAX_WAIT if wait_exponential_max is None else wait_exponential_max
         self._wait_incrementing_max = MAX_WAIT if wait_incrementing_max is None else wait_incrementing_max
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
+        self._wait_exp_decorr_jitter_base = wait_exp_decorr_jitter_base
+        self._wait_exp_decorr_jitter_max = wait_exp_decorr_jitter_max
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
+
+        _decorr_jitter_args = [wait_exp_decorr_jitter_base,
+                               wait_exp_decorr_jitter_max]
+        _any_decorr_jitter_args = any(map(lambda x: x is not None, _decorr_jitter_args))
+        _all_decorr_jitter_args = all(map(lambda x: x is not None, _decorr_jitter_args))
+        # Make sure only one jitter strategy was selected.
+        if wait_jitter_max and _any_decorr_jitter_args:
+            raise ValueError('Choose either random jitter or exponential backoff with\
+                             decorrelated jitter.')
+        # Make sure min & max decorr jitter are sane.
+        if _all_decorr_jitter_args:
+            if (wait_exp_decorr_jitter_base > wait_exp_decorr_jitter_max):
+                raise ValueError('wait_exp_decorr_jitter_base must be less than\
+                                 wait_exp_decorr_jitter_max')
+        if _any_decorr_jitter_args and not _all_decorr_jitter_args:
+            raise ValueError('wait_exp_decorr_jitter_base and _max must both be specified.')
 
         # TODO add chaining of stop behaviors
         # stop behavior
@@ -125,6 +145,11 @@ class Retrying(object):
 
         if wait_exponential_multiplier is not None or wait_exponential_max is not None:
             wait_funcs.append(self.exponential_sleep)
+
+        if _all_decorr_jitter_args:
+            # Initialize previous delay value, which is only needed by this algorithm.
+            self._previous_delay_ms = wait_exp_decorr_jitter_base
+            wait_funcs.append(self.exponential_sleep_with_decorrelated_jitter)
 
         if wait_func is not None:
             self.wait = wait_func
@@ -195,6 +220,21 @@ class Retrying(object):
             result = self._wait_exponential_max
         if result < 0:
             result = 0
+        return result
+
+    def exponential_sleep_with_decorrelated_jitter(self, previous_attempt_number, delay_since_first_attempt_ms):
+        # Fastest, though not cheapest, exponential backoff algorithm from AWS Architecture
+        # blog: https://www.awsarchitectureblog.com/2015/03/backoff.html:
+        #
+        #   sleep(n) = min(sleep_max, random(sleep_base, sleep(n-1) * 3))
+        #
+        # for n >=1 with sleep(0) := sleep_base. Implicitly, sleep_min = sleep_base.
+        result = min(self._wait_exp_decorr_jitter_max,
+                     random.uniform(self._wait_exp_decorr_jitter_base,
+                                    self._previous_delay_ms * 3))
+        # Hang onto previous delay value, which is not available in the signature of self.wait.
+        # Note: this is initialized to the base value in the __init__ method.
+        self._previous_delay_ms = result
         return result
 
     @staticmethod

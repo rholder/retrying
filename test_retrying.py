@@ -123,6 +123,39 @@ class TestWaitConditions(unittest.TestCase):
         self.assertEqual(r.wait(7, 0), 50000)
         self.assertEqual(r.wait(50, 0), 50000)
 
+    def test_exponential_with_decorrelated_jitter(self):
+        wait_base = 1000
+        wait_max = 64000
+        r = Retrying(wait_exp_decorr_jitter_base=wait_base,
+                     wait_exp_decorr_jitter_max=wait_max)
+        # Because wait times are decorrelated from the number of attempts, the parameters passed
+        # to the wait method don't matter. However, for ease of readability, this test
+        # increments them as if they do.
+        previous_wait = wait_base
+        for i in range(10):
+            wait = r.wait(i, 0)
+            # No need to worry about the pathological equality case, which is prevented by
+            # `test_decorr_base_lt_decorr_max`.
+            self.assertTrue(wait_base <= wait <= wait_max)
+            previous_wait = wait
+
+    def test_only_one_jitter(self):
+        with self.assertRaises(ValueError):
+            r = Retrying(wait_exp_decorr_jitter_base=0,
+                         wait_exp_decorr_jitter_max=1,
+                         wait_jitter_max=2)
+
+    def test_decorr_base_lt_decorr_max(self):
+        with self.assertRaises(ValueError):
+            r = Retrying(wait_exp_decorr_jitter_base=1,
+                         wait_exp_decorr_jitter_max=0)
+
+    def test_all_decorr_args_required(self):
+        with self.assertRaises(ValueError):
+            r = Retrying(wait_exp_decorr_jitter_base=0)
+        with self.assertRaises(ValueError):
+            r = Retrying(wait_exp_decorr_jitter_max=1)
+
     def test_legacy_explicit_wait_type(self):
         Retrying(wait="exponential_sleep")
 
