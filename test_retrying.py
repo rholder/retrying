@@ -140,21 +140,28 @@ class TestWaitConditions(unittest.TestCase):
             previous_wait = wait
 
     def test_only_one_jitter(self):
-        with self.assertRaises(ValueError):
-            r = Retrying(wait_exp_decorr_jitter_base=0,
-                         wait_exp_decorr_jitter_max=1,
-                         wait_jitter_max=2)
+        kwargs = {
+            'wait_exp_decorr_jitter_base':0,
+            'wait_exp_decorr_jitter_max':1,
+            'wait_jitter_max':2,
+        }
+        self.assertRaises(ValueError, Retrying, **kwargs)
 
     def test_decorr_base_lt_decorr_max(self):
-        with self.assertRaises(ValueError):
-            r = Retrying(wait_exp_decorr_jitter_base=1,
-                         wait_exp_decorr_jitter_max=0)
+        kwargs = {
+            'wait_exp_decorr_jitter_base':1,
+            'wait_exp_decorr_jitter_max':0,
+        }
+        self.assertRaises(ValueError, Retrying, **kwargs)
 
     def test_all_decorr_args_required(self):
-        with self.assertRaises(ValueError):
-            r = Retrying(wait_exp_decorr_jitter_base=0)
-        with self.assertRaises(ValueError):
-            r = Retrying(wait_exp_decorr_jitter_max=1)
+        kwargs = {
+            'wait_exp_decorr_jitter_base':0,
+        }
+        self.assertRaises(ValueError, Retrying, **kwargs)
+        kwargs = {
+            'wait_exp_decorr_jitter_max':1,
+        }
 
     def test_legacy_explicit_wait_type(self):
         Retrying(wait="exponential_sleep")
