@@ -223,12 +223,20 @@ class Retrying(object):
         return result
 
     def exponential_sleep_with_decorrelated_jitter(self, previous_attempt_number, delay_since_first_attempt_ms):
-        # Fastest, though not cheapest, exponential backoff algorithm from AWS Architecture
-        # blog: https://www.awsarchitectureblog.com/2015/03/backoff.html:
-        #
-        #   sleep(n) = min(sleep_max, random(sleep_base, sleep(n-1) * 3))
-        #
-        # for n >=1 with sleep(0) := sleep_base. Implicitly, sleep_min = sleep_base.
+        """
+        Return the length of next delay interval.
+
+        :param previous_attempt_number: The previous attempt number.
+        :param delay_since_first_attempt_ms: The number of milliseconds since the first delay
+        interval.
+
+        Implements of the fastest, though not cheapest, exponential backoff algorithm from this
+        AWS Architecture blog post: https://www.awsarchitectureblog.com/2015/03/backoff.html:
+
+            sleep(n) = min(sleep_max, random(sleep_base, sleep(n-1) * 3))
+
+        for n >=1 with sleep(0) := sleep_base.
+        """
         result = min(self._wait_exp_decorr_jitter_max,
                      random.uniform(self._wait_exp_decorr_jitter_base,
                                     self._previous_delay_ms * 3))
