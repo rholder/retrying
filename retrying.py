@@ -12,6 +12,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
+else:
+    # Isolate Py >= 3.4 code to avoid SyntaxError.
+    import retrying_async
+
 import random
 import six
 import sys
@@ -37,16 +45,7 @@ def retry(*dargs, **dkw):
     """
     # support both @retry and @retry() as valid syntax
     if len(dargs) == 1 and callable(dargs[0]):
-        def wrap_simple(f):
-
-            @six.wraps(f)
-            def wrapped_f(*args, **kw):
-                return Retrying().call(f, *args, **kw)
-
-            return wrapped_f
-
-        return wrap_simple(dargs[0])
-
+        return retry()(dargs[0])
     else:
         def wrap(f):
 
@@ -57,6 +56,12 @@ def retry(*dargs, **dkw):
             return wrapped_f
 
         return wrap
+
+
+# Py < 3.3 generators compat for return via raise.
+class GeneratorReturn(Exception):
+    def __init__(self, value):
+        self.value = value
 
 
 class Retrying(object):
@@ -214,7 +219,7 @@ class Retrying(object):
 
         return reject
 
-    def call(self, fn, *args, **kwargs):
+    def retry_main_loop(self):
         start_time = int(round(time.time() * 1000))
         attempt_number = 1
         while True:
@@ -222,13 +227,14 @@ class Retrying(object):
                 self._before_attempts(attempt_number)
 
             try:
-                attempt = Attempt(fn(*args, **kwargs), attempt_number, False)
+                result = yield None
+                attempt = Attempt(result, attempt_number, False)
             except:
                 tb = sys.exc_info()
                 attempt = Attempt(tb, attempt_number, True)
 
             if not self.should_reject(attempt):
-                return attempt.get(self._wrap_exception)
+                raise GeneratorReturn(attempt.get(self._wrap_exception))
 
             if self._after_attempts:
                 self._after_attempts(attempt_number)
@@ -248,6 +254,31 @@ class Retrying(object):
                 time.sleep(sleep / 1000.0)
 
             attempt_number += 1
+
+    def call_sync(self, fn, *args, **kwargs):
+        retry_generator = self.retry_main_loop()
+        next(retry_generator)
+        while True:
+            try:
+                try_result = (fn(*args, **kwargs),)
+                send = retry_generator.send
+            except:
+                try_result = sys.exc_info()
+                send = retry_generator.throw
+
+            try:
+                send(*try_result)
+            except GeneratorReturn as e:
+                return e.value
+
+    if asyncio:
+        call_async = retrying_async.call_async
+
+    def call(self, fn, *args, **kwargs):
+        if asyncio and asyncio.iscoroutinefunction(fn):
+            return self.call_async(fn, *args, **kwargs)
+        else:
+            return self.call_sync(fn, *args, **kwargs)
 
 
 class Attempt(object):
