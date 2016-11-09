@@ -49,8 +49,8 @@ settings.update(
     url='https://github.com/rholder/retrying',
     classifiers=CLASSIFIERS,
     keywords="decorator decorators retry retrying exception exponential backoff",
-    py_modules= ['retrying'],
-    test_suite="test_retrying",
+    py_modules= ['retrying', 'retrying_async'],
+    test_suite="test_suite",
     install_requires=requirements,
 )
 

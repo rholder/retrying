@@ -39,6 +39,7 @@ Features
 - Specify wait condition (i.e. exponential backoff sleeping between attempts)
 - Customize retrying on Exceptions
 - Customize retrying on expected returned result
+- Retry on coroutines
 
 
 Installation
