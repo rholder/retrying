@@ -235,7 +235,9 @@ class Retrying(object):
 
             delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
             if self.stop(attempt_number, delay_since_first_attempt_ms):
-                if not self._wrap_exception and attempt.has_exception:
+                if not attempt.has_exception:
+                    return attempt.get()
+                if not self._wrap_exception:
                     # get() on an attempt with an exception should cause it to be raised, but raise just in case
                     raise attempt.get()
                 else:
