@@ -62,7 +62,7 @@ But, you might regret that later.
 Examples
 ----------
 
-As you saw above, the default behavior is to retry forever without waiting.
+As you saw above, the default behavior is to retry 5 times without waiting.
 
 .. code-block:: python
 
