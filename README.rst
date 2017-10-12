@@ -6,9 +6,6 @@ Retrying
 .. image:: https://img.shields.io/travis/rholder/retrying.svg
     :target: https://travis-ci.org/rholder/retrying
 
-.. image:: https://img.shields.io/pypi/dm/retrying.svg
-    :target: https://pypi.python.org/pypi/retrying
-
 Retrying is an Apache 2.0 licensed general-purpose retrying library, written in
 Python, to simplify the task of adding retry behavior to just about anything.
 
