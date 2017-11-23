@@ -59,6 +59,11 @@ def retry(*dargs, **dkw):
         return wrap
 
 
+# QQQ(guyarad) - why aren't you using timedelta/datetime everywhere?
+def get_current_ms():
+    return int(round(time.time() * 1000))
+
+
 class Retrying(object):
 
     def __init__(self,
@@ -93,12 +98,17 @@ class Retrying(object):
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
 
+        # QQQ(guyarad) - is this TODO still relevant? aren't you chaining it right now?
         # TODO add chaining of stop behaviors
         # stop behavior
         stop_funcs = []
-        if stop_max_attempt_number is not None:
+        # QQQ(guyarad) - fixed a bug (?) that was testing the passed parameter and not the deduced
+        #                this results in having infinite number of attempts - intentional?
+        if self._stop_max_attempt_number is not None:
             stop_funcs.append(self.stop_after_attempt)
 
+        # QQQ(guyarad) - similar to above. if `stop_max_delay` isn't passed, we'll never use the default value
+        #                so what's the point of having it?
         if stop_max_delay is not None:
             stop_funcs.append(self.stop_after_delay)
 
@@ -215,7 +225,7 @@ class Retrying(object):
         return reject
 
     def call(self, fn, *args, **kwargs):
-        start_time = int(round(time.time() * 1000))
+        start_time = get_current_ms()
         attempt_number = 1
         while True:
             if self._before_attempts:
@@ -233,7 +243,7 @@ class Retrying(object):
             if self._after_attempts:
                 self._after_attempts(attempt_number)
 
-            delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
+            delay_since_first_attempt_ms = get_current_ms() - start_time
             if self.stop(attempt_number, delay_since_first_attempt_ms):
                 if not self._wrap_exception and attempt.has_exception:
                     # get() on an attempt with an exception should cause it to be raised, but raise just in case

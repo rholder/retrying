@@ -1,16 +1,18 @@
-## Copyright 2013 Ray Holder
-##
-## Licensed under the Apache License, Version 2.0 (the "License");
-## you may not use this file except in compliance with the License.
-## You may obtain a copy of the License at
-##
-## http://www.apache.org/licenses/LICENSE-2.0
-##
-## Unless required by applicable law or agreed to in writing, software
-## distributed under the License is distributed on an "AS IS" BASIS,
-## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-## See the License for the specific language governing permissions and
-## limitations under the License.
+"""
+Copyright 2013 Ray Holder
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
 import time
 import unittest
@@ -316,9 +318,9 @@ class TestDecoratorWrapper(unittest.TestCase):
 
     def test_with_wait(self):
         start = current_time_ms()
-        result = _retryable_test_with_wait(NoneReturnUntilAfterCount(5))
+        result = _retryable_test_with_wait(NoneReturnUntilAfterCount(4))
         t = current_time_ms() - start
-        self.assertTrue(t >= 250)
+        self.assertTrue(t >= 200)
         self.assertTrue(result)
 
     def test_with_stop_on_return_value(self):
@@ -340,7 +342,7 @@ class TestDecoratorWrapper(unittest.TestCase):
             print(re)
 
     def test_retry_if_exception_of_type(self):
-        self.assertTrue(_retryable_test_with_exception_type_io(NoIOErrorAfterCount(5)))
+        self.assertTrue(_retryable_test_with_exception_type_io(NoIOErrorAfterCount(4)))
 
         try:
             _retryable_test_with_exception_type_io(NoNameErrorAfterCount(5))
@@ -360,7 +362,7 @@ class TestDecoratorWrapper(unittest.TestCase):
             self.assertTrue(re.last_attempt.value[2] is not None)
             print(re)
 
-        self.assertTrue(_retryable_test_with_exception_type_custom(NoCustomErrorAfterCount(5)))
+        self.assertTrue(_retryable_test_with_exception_type_custom(NoCustomErrorAfterCount(4)))
 
         try:
             _retryable_test_with_exception_type_custom(NoNameErrorAfterCount(5))
@@ -383,7 +385,7 @@ class TestDecoratorWrapper(unittest.TestCase):
     def test_wrapped_exception(self):
 
         # base exception cases
-        self.assertTrue(_retryable_test_with_exception_type_io_wrap(NoIOErrorAfterCount(5)))
+        self.assertTrue(_retryable_test_with_exception_type_io_wrap(NoIOErrorAfterCount(4)))
 
         try:
             _retryable_test_with_exception_type_io_wrap(NoNameErrorAfterCount(5))
@@ -404,7 +406,7 @@ class TestDecoratorWrapper(unittest.TestCase):
             print(re)
 
         # custom error cases
-        self.assertTrue(_retryable_test_with_exception_type_custom_wrap(NoCustomErrorAfterCount(5)))
+        self.assertTrue(_retryable_test_with_exception_type_custom_wrap(NoCustomErrorAfterCount(4)))
 
         try:
             _retryable_test_with_exception_type_custom_wrap(NoNameErrorAfterCount(5))
@@ -429,10 +431,12 @@ class TestDecoratorWrapper(unittest.TestCase):
             print(re)
 
     def test_defaults(self):
-        self.assertTrue(_retryable_default(NoNameErrorAfterCount(5)))
-        self.assertTrue(_retryable_default_f(NoNameErrorAfterCount(5)))
-        self.assertTrue(_retryable_default(NoCustomErrorAfterCount(5)))
-        self.assertTrue(_retryable_default_f(NoCustomErrorAfterCount(5)))
+        succeed_after = 4
+        self.assertTrue(_retryable_default(NoNameErrorAfterCount(succeed_after)))
+        self.assertTrue(_retryable_default_f(NoNameErrorAfterCount(succeed_after)))
+        self.assertTrue(_retryable_default(NoCustomErrorAfterCount(succeed_after)))
+        self.assertTrue(_retryable_default_f(NoCustomErrorAfterCount(succeed_after)))
+
 
 class TestBeforeAfterAttempts(unittest.TestCase):
     _attempt_number = 0
@@ -443,7 +447,7 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         def _before(attempt_number):
             TestBeforeAfterAttempts._attempt_number = attempt_number
 
-        @retry(wait_fixed = 1000, stop_max_attempt_number = 1, before_attempts = _before)
+        @retry(wait_fixed=1000, stop_max_attempt_number=1, before_attempts=_before)
         def _test_before():
             pass
         
@@ -457,7 +461,7 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         def _after(attempt_number):
             TestBeforeAfterAttempts._attempt_number = attempt_number
 
-        @retry(wait_fixed = 100, stop_max_attempt_number = 3, after_attempts = _after)
+        @retry(wait_fixed=100, stop_max_attempt_number=3, after_attempts=_after)
         def _test_after():
             if TestBeforeAfterAttempts._attempt_number < 2:
                 raise Exception("testing after_attempts handler")
@@ -467,6 +471,7 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         _test_after()
 
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
+
 
 if __name__ == '__main__':
     unittest.main()
