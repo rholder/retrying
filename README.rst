@@ -141,6 +141,17 @@ We can also use the result of the function to alter the behavior of retrying.
     def might_return_none():
         print "Retry forever ignoring Exceptions with no wait if return value is None"
 
+Don't like RetryError on failure?  Try running a callback instead.
+
+.. code-block:: python
+
+    def return_last_result(attempt):
+        """Return the last result of the function instead of raising an exception"""
+        return attempt.value
+
+    @retry(stop_max_attempt_number=3, retry_on_result=retry_if_result_none, failure_callback=return_last_result)
+    def eventually_return_none():
+        print("Return None after trying not to")
 
 Any combination of stop, wait, etc. is also supported to give you the freedom to mix and match.
 
