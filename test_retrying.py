@@ -15,6 +15,7 @@
 import time
 import unittest
 
+from retrying import Attempt
 from retrying import RetryError
 from retrying import Retrying
 from retrying import retry
@@ -467,6 +468,62 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         _test_after()
 
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
+
+
+class TestOnFailure(unittest.TestCase):
+
+    _attempts = 3
+    _attempt_number = 0
+    _callback_called = False
+    _exception_message = "Callback should be called instead of this exception being raised."
+
+    def tearDown(self):
+        self._attempt_number = 0
+        self._callback_called = False
+
+    def _callback(self, attempt):
+        self._callback_called = True
+        return attempt
+
+    def test_failure_callback(self):
+        @retry(stop_max_attempt_number=self._attempts, failure_callback=self._callback)
+        def _run():
+            self._attempt_number += 1
+            raise Exception(self._exception_message)
+
+        # should *not* raise an exception
+        _run()
+
+        self.assertTrue(self._callback_called)
+        self.assertEqual(self._attempts, self._attempt_number)
+
+    def test_failure_callback_callback_receives_attempt(self):
+        @retry(stop_max_attempt_number=self._attempts, failure_callback=self._callback)
+        def _run():
+            self._attempt_number += 1
+            raise Exception(self._exception_message)
+
+        result = _run()
+
+        self.assertTrue(isinstance(result, Attempt))
+
+        self.assertTrue(self._callback_called)
+        self.assertEqual(self._attempts, self._attempt_number)
+
+    def test_failure_callback_callback_last_attempt_value(self):
+        @retry(stop_max_attempt_number=self._attempts,
+               retry_on_result=retry_if_result_none,
+               failure_callback=self._callback)
+        def _run():
+            self._attempt_number += 1
+
+        result = _run()
+
+        self.assertTrue(result.value is None)
+
+        self.assertTrue(self._callback_called)
+        self.assertEqual(self._attempts, self._attempt_number)
+
 
 if __name__ == '__main__':
     unittest.main()

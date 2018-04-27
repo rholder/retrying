@@ -77,7 +77,8 @@ class Retrying(object):
                  wait_func=None,
                  wait_jitter_max=None,
                  before_attempts=None,
-                 after_attempts=None):
+                 after_attempts=None,
+                 failure_callback=None):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -92,6 +93,7 @@ class Retrying(object):
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
+        self._failure_callback = failure_callback
 
         # TODO add chaining of stop behaviors
         # stop behavior
@@ -235,6 +237,8 @@ class Retrying(object):
 
             delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
             if self.stop(attempt_number, delay_since_first_attempt_ms):
+                if self._failure_callback:
+                    return self._failure_callback(attempt)
                 if not self._wrap_exception and attempt.has_exception:
                     # get() on an attempt with an exception should cause it to be raised, but raise just in case
                     raise attempt.get()
