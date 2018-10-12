@@ -95,6 +95,13 @@ Most things don't like to be polled as fast as possible, so let's just wait 2 se
     def wait_2_s():
         print "Wait 2 second between retries"
 
+Also we can estimate next time retrying will cost time if expect or not.
+
+.. code-block:: python
+
+    @retry(stop_max_estimate=10000, wait_fixed=2000)
+    def stop_after_8_s():
+        print "Stopping after 8 seconds, because next time retrying will cost 2 second to wait"
 
 Some things perform best with a bit of randomness injected.
 

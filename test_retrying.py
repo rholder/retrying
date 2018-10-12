@@ -24,28 +24,34 @@ class TestStopConditions(unittest.TestCase):
 
     def test_never_stop(self):
         r = Retrying()
-        self.assertFalse(r.stop(3, 6546))
+        self.assertFalse(r.stop(3, 6546, 6546))
 
     def test_stop_after_attempt(self):
         r = Retrying(stop_max_attempt_number=3)
-        self.assertFalse(r.stop(2, 6546))
-        self.assertTrue(r.stop(3, 6546))
-        self.assertTrue(r.stop(4, 6546))
+        self.assertFalse(r.stop(2, 6546, 6546))
+        self.assertTrue(r.stop(3, 6546, 6546))
+        self.assertTrue(r.stop(4, 6546, 6546))
 
     def test_stop_after_delay(self):
         r = Retrying(stop_max_delay=1000)
-        self.assertFalse(r.stop(2, 999))
-        self.assertTrue(r.stop(2, 1000))
-        self.assertTrue(r.stop(2, 1001))
+        self.assertFalse(r.stop(2, 999, 999))
+        self.assertTrue(r.stop(2, 1000, 999))
+        self.assertTrue(r.stop(2, 1001, 999))
+
+    def test_stop_after_estimate(self):
+        r = Retrying(stop_max_estimate=1000)
+        self.assertFalse(r.stop(2, 999, 999))
+        self.assertTrue(r.stop(2, 999, 1000))
+        self.assertTrue(r.stop(2, 999, 1001))
 
     def test_legacy_explicit_stop_type(self):
         Retrying(stop="stop_after_attempt")
 
     def test_stop_func(self):
-        r = Retrying(stop_func=lambda attempt, delay: attempt == delay)
-        self.assertFalse(r.stop(1, 3))
-        self.assertFalse(r.stop(100, 99))
-        self.assertTrue(r.stop(101, 101))
+        r = Retrying(stop_func=lambda attempt, delay, estimate: attempt == delay)
+        self.assertFalse(r.stop(1, 3, 3))
+        self.assertFalse(r.stop(100, 99, 3))
+        self.assertTrue(r.stop(101, 101, 3))
 
 
 class TestWaitConditions(unittest.TestCase):

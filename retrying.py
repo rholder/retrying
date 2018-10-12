@@ -65,6 +65,7 @@ class Retrying(object):
                  stop=None, wait=None,
                  stop_max_attempt_number=None,
                  stop_max_delay=None,
+                 stop_max_estimate=None,
                  wait_fixed=None,
                  wait_random_min=None, wait_random_max=None,
                  wait_incrementing_start=None, wait_incrementing_increment=None,
@@ -81,6 +82,7 @@ class Retrying(object):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
+        self._stop_max_estimate = 100 if stop_max_estimate is None else stop_max_estimate
         self._wait_fixed = 1000 if wait_fixed is None else wait_fixed
         self._wait_random_min = 0 if wait_random_min is None else wait_random_min
         self._wait_random_max = 1000 if wait_random_max is None else wait_random_max
@@ -102,11 +104,14 @@ class Retrying(object):
         if stop_max_delay is not None:
             stop_funcs.append(self.stop_after_delay)
 
+        if stop_max_estimate is not None:
+            stop_funcs.append(self.stop_after_estimate)
+
         if stop_func is not None:
             self.stop = stop_func
 
         elif stop is None:
-            self.stop = lambda attempts, delay: any(f(attempts, delay) for f in stop_funcs)
+            self.stop = lambda attempts, delay, estimate: any(f(attempts, delay, estimate) for f in stop_funcs)
 
         else:
             self.stop = getattr(self, stop)
@@ -142,7 +147,7 @@ class Retrying(object):
             # this allows for providing a tuple of exception types that
             # should be allowed to retry on, and avoids having to create
             # a callback that does the same thing
-            if isinstance(retry_on_exception, (tuple)):
+            if isinstance(retry_on_exception, (tuple,)):
                 retry_on_exception = _retry_if_exception_of_type(
                     retry_on_exception)
             self._retry_on_exception = retry_on_exception
@@ -155,13 +160,20 @@ class Retrying(object):
 
         self._wrap_exception = wrap_exception
 
-    def stop_after_attempt(self, previous_attempt_number, delay_since_first_attempt_ms):
+    def stop_after_attempt(self, previous_attempt_number, delay_since_first_attempt_ms,
+                           estimate_since_first_attempt_ms):
         """Stop after the previous attempt >= stop_max_attempt_number."""
         return previous_attempt_number >= self._stop_max_attempt_number
 
-    def stop_after_delay(self, previous_attempt_number, delay_since_first_attempt_ms):
+    def stop_after_delay(self, previous_attempt_number, delay_since_first_attempt_ms,
+                         estimate_since_first_attempt_ms):
         """Stop after the time from the first attempt >= stop_max_delay."""
         return delay_since_first_attempt_ms >= self._stop_max_delay
+
+    def stop_after_estimate(self, previous_attempt_number, delay_since_first_attempt_ms,
+                            estimate_since_first_attempt_ms):
+        """Stop after the time from the first attempt plus will sleep time>= stop_max_estimate."""
+        return estimate_since_first_attempt_ms >= self._stop_max_estimate
 
     @staticmethod
     def no_sleep(previous_attempt_number, delay_since_first_attempt_ms):
@@ -234,17 +246,20 @@ class Retrying(object):
                 self._after_attempts(attempt_number)
 
             delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
-            if self.stop(attempt_number, delay_since_first_attempt_ms):
+            sleep = self.wait(attempt_number, delay_since_first_attempt_ms)
+
+            if self._wait_jitter_max:
+                jitter = random.random() * self._wait_jitter_max
+                sleep = sleep + max(0, jitter)
+            estimate_since_first_attempt_ms = delay_since_first_attempt_ms + sleep
+
+            if self.stop(attempt_number, delay_since_first_attempt_ms, estimate_since_first_attempt_ms):
                 if not self._wrap_exception and attempt.has_exception:
                     # get() on an attempt with an exception should cause it to be raised, but raise just in case
                     raise attempt.get()
                 else:
                     raise RetryError(attempt)
             else:
-                sleep = self.wait(attempt_number, delay_since_first_attempt_ms)
-                if self._wait_jitter_max:
-                    jitter = random.random() * self._wait_jitter_max
-                    sleep = sleep + max(0, jitter)
                 time.sleep(sleep / 1000.0)
 
             attempt_number += 1
