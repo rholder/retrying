@@ -481,7 +481,7 @@ class TestMeaningfulMessage(unittest.TestCase):
             just_a_function()
             self.assertFalse(True)
         except RetryError as ex:
-            self.assertIn('just_a_function', str(ex))
+            self.assertTrue('just_a_function' in str(ex))
 
     def test_custom_message(self):
 
@@ -493,7 +493,7 @@ class TestMeaningfulMessage(unittest.TestCase):
             just_a_function()
             self.assertFalse(True)
         except RetryError as ex:
-            self.assertIn('hello world', str(ex))
+            self.assertTrue('hello world' in str(ex))
 
 if __name__ == '__main__':
     unittest.main()
