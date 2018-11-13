@@ -468,5 +468,19 @@ class TestBeforeAfterAttempts(unittest.TestCase):
 
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
 
+class TestMeaningfulMessage(unittest.TestCase):
+
+    def test_function_name(self):
+        @retry(retry_on_result = lambda x: not x, stop_max_attempt_number = 5)
+        def just_a_function():
+            return 0
+        self.assertRaisesRegexp(RetryError, 'just_a_function', just_a_function)
+
+    def test_custom_message(self):
+        @retry(retry_on_result = lambda x: not x, stop_max_attempt_number = 5, custom_message = 'hello world')
+        def just_a_function():
+            return 0
+        self.assertRaisesRegexp(RetryError, 'hello world', just_a_function)
+
 if __name__ == '__main__':
     unittest.main()
