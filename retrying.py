@@ -77,7 +77,8 @@ class Retrying(object):
                  wait_func=None,
                  wait_jitter_max=None,
                  before_attempts=None,
-                 after_attempts=None):
+                 after_attempts=None,
+                 custom_message=None):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -92,6 +93,7 @@ class Retrying(object):
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
+        self._custom_message = custom_message
 
         # TODO add chaining of stop behaviors
         # stop behavior
@@ -217,15 +219,16 @@ class Retrying(object):
     def call(self, fn, *args, **kwargs):
         start_time = int(round(time.time() * 1000))
         attempt_number = 1
+        message = self._custom_message if self._custom_message else fn.__name__
         while True:
             if self._before_attempts:
                 self._before_attempts(attempt_number)
 
             try:
-                attempt = Attempt(fn(*args, **kwargs), attempt_number, False)
+                attempt = Attempt(fn(*args, **kwargs), attempt_number, False, message)
             except:
                 tb = sys.exc_info()
-                attempt = Attempt(tb, attempt_number, True)
+                attempt = Attempt(tb, attempt_number, True, message)
 
             if not self.should_reject(attempt):
                 return attempt.get(self._wrap_exception)
@@ -257,10 +260,11 @@ class Attempt(object):
     occurred during the execution.
     """
 
-    def __init__(self, value, attempt_number, has_exception):
+    def __init__(self, value, attempt_number, has_exception, message):
         self.value = value
         self.attempt_number = attempt_number
         self.has_exception = has_exception
+        self.message = message
 
     def get(self, wrap_exception=False):
         """
@@ -278,9 +282,9 @@ class Attempt(object):
 
     def __repr__(self):
         if self.has_exception:
-            return "Attempts: {0}, Error:\n{1}".format(self.attempt_number, "".join(traceback.format_tb(self.value[2])))
+            return "Attempts: {0}, {1}, Error:\n{2}".format(self.attempt_number, self.message, "".join(traceback.format_tb(self.value[2])))
         else:
-            return "Attempts: {0}, Value: {1}".format(self.attempt_number, self.value)
+            return "Attempts: {0}, {1}, Value: {2}".format(self.attempt_number, self.message, self.value)
 
 
 class RetryError(Exception):

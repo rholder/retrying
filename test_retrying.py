@@ -12,6 +12,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+import sys
 import time
 import unittest
 
@@ -467,6 +468,32 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         _test_after()
 
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
+
+class TestMeaningfulMessage(unittest.TestCase):
+
+    def test_function_name(self):
+
+        @retry(retry_on_result = lambda x: not x, stop_max_attempt_number = 5)
+        def just_a_function():
+            return 0
+
+        try:
+            just_a_function()
+            self.assertFalse(True)
+        except RetryError as ex:
+            self.assertTrue('just_a_function' in str(ex))
+
+    def test_custom_message(self):
+
+        @retry(retry_on_result = lambda x: not x, stop_max_attempt_number = 5, custom_message = 'hello world')
+        def just_a_function():
+            return 0
+
+        try:
+            just_a_function()
+            self.assertFalse(True)
+        except RetryError as ex:
+            self.assertTrue('hello world' in str(ex))
 
 if __name__ == '__main__':
     unittest.main()
