@@ -12,6 +12,7 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 import datetime
+import sys
 import time
 import unittest
 
@@ -487,8 +488,23 @@ class TestGenerators(unittest.TestCase):
                 if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
                     raise ValueError
                 yield i
-
         self.assertEqual(list(range(10)), list(_f(datetime.datetime.now())))
+
+    def test_deterministic_big_values(self):
+        # Do NOT use nondeterministic generators. You would get OOM.
+        @retry(stop_max_delay=3000, deterministic_generators=True)
+        def _f(started: datetime.datetime):
+            for i in range(sys.maxsize):
+                if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                    raise ValueError
+                yield i
+
+        bounded_result = []
+        for i in _f(datetime.datetime.now()):
+            if i > 9:
+                break
+            bounded_result.append(i)
+        self.assertEqual(list(range(10)), bounded_result)
 
     def test_simple(self):
         @retry(stop_max_delay=3000)

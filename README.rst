@@ -144,6 +144,39 @@ We can also use the result of the function to alter the behavior of retrying.
 
 Any combination of stop, wait, etc. is also supported to give you the freedom to mix and match.
 
+You might need to retry a (repeatable) generator function. The following generator functions are supported:
+1. Generator functions whose values can be fetched as a whole. Ideal if the function may not preserve the order
+and does not generates many elements
+2. Generator functions whose values are always fetched in the same order, but generates many elements
+
+.. code-block:: python
+
+    import datetime
+
+
+    @retry(stop_max_delay=3000)
+    def _few_elements(started: datetime.datetime):
+        for i in range(10):
+            if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                raise ValueError
+            yield i
+    result = list(_few_elements(datetime.datetime.now()))  # here we have [0, 1, ... 9]
+
+    @retry(stop_max_delay=3000, deterministic_generators=True)
+    def _many_elements(started: datetime.datetime):
+        for i in range(sys.maxsize):
+            if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                raise ValueError
+            yield i
+
+    bounded_result = []
+    for i in _many_elements(datetime.datetime.now()):
+        if i > 9:
+            break
+        bounded_result.append(i)
+    # Here bounded_result is [0, 1, ..., 9] and your RAM is preserved
+
+
 Contribute
 ----------
 
