@@ -473,7 +473,7 @@ class TestBeforeAfterAttempts(unittest.TestCase):
 class TestGenerators(unittest.TestCase):
     def test(self):
         @retry(stop_max_delay=3000)
-        def _f(started: datetime.datetime):
+        def _f(started):
             for i in range(10):
                 if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
                     raise ValueError
@@ -483,7 +483,7 @@ class TestGenerators(unittest.TestCase):
     
     def test_deterministic(self):
         @retry(stop_max_delay=3000, deterministic_generators=True)
-        def _f(started: datetime.datetime):
+        def _f(started):
             for i in range(10):
                 if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
                     raise ValueError
@@ -493,7 +493,7 @@ class TestGenerators(unittest.TestCase):
     def test_deterministic_big_values(self):
         # Do NOT use nondeterministic generators. You would get OOM.
         @retry(stop_max_delay=3000, deterministic_generators=True)
-        def _f(started: datetime.datetime):
+        def _f(started):
             for i in range(sys.maxsize):
                 if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
                     raise ValueError
@@ -508,7 +508,7 @@ class TestGenerators(unittest.TestCase):
 
     def test_simple(self):
         @retry(stop_max_delay=3000)
-        def _f(started: datetime.datetime):
+        def _f(started):
             if datetime.datetime.now() - started < datetime.timedelta(seconds=2):
                 raise ValueError
             yield 'OK'
