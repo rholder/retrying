@@ -317,7 +317,8 @@ class Retrying(object):
             attempt_number += 1
 
     def _yelded_data(self, attempt):
-        yield from attempt.get(self._wrap_exception)
+        for d in attempt.get(self._wrap_exception):
+            yield d
 
     def _deterministic_generation(self, fn, *args, **kwargs):
         for i, v in enumerate(fn(*args, **kwargs)):
