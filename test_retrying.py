@@ -491,7 +491,7 @@ class TestGenerators(unittest.TestCase):
         self.assertEqual(list(range(10)), list(_f(datetime.datetime.now())))
 
     def test_deterministic_big_values(self):
-        if sys.version >= (3, 0):
+        if sys.version_info >= (3, 0):
             safe_range = range
         else:
             # noinspection PyUnresolvedReferences
