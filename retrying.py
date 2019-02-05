@@ -19,6 +19,15 @@ import traceback
 
 import six
 
+
+if sys.version_info >= (3, 0):
+    def _is_async(fn):
+        return inspect.isasyncgenfunction(fn) or inspect.isgeneratorfunction(fn)
+else:
+    def _is_async(fn):
+        return inspect.isgeneratorfunction(fn)
+
+
 # sys.maxint / 2, since Python 3.2 doesn't have a sys.maxint...
 MAX_WAIT = 1073741823
 
@@ -41,8 +50,7 @@ def retry(*dargs, **dkw):
 
             @six.wraps(f)
             def wrapped_f(*args, **kw):
-                if dkw.get('deterministic_generators') and \
-                        (inspect.isasyncgenfunction(f) or inspect.isgeneratorfunction(f)):
+                if dkw.get('deterministic_generators') and _is_async(f):
                     return Retrying().call_async(f, *args, **kw)
                 return Retrying().call(f, *args, **kw)
             return wrapped_f
@@ -54,8 +62,7 @@ def retry(*dargs, **dkw):
 
             @six.wraps(f)
             def wrapped_f(*args, **kw):
-                if dkw.get('deterministic_generators') and \
-                        (inspect.isasyncgenfunction(f) or inspect.isgeneratorfunction(f)):
+                if dkw.get('deterministic_generators') and _is_async(f):
                     return Retrying(*dargs, **dkw).call_async(f, *args, **kw)
                 return Retrying(*dargs, **dkw).call(f, *args, **kw)
 
@@ -225,7 +232,7 @@ class Retrying(object):
         self._deterministic_offset = -1
         assert not self._deterministic_generators
 
-        is_generator = inspect.isasyncgenfunction(fn) or inspect.isgeneratorfunction(fn)
+        is_generator = _is_async(fn)
 
         start_time = int(round(time.time() * 1000))
         attempt_number = 1
@@ -278,7 +285,7 @@ class Retrying(object):
     def call_async(self, fn, *args, **kwargs):
         self._deterministic_offset = -1
         assert self._deterministic_generators
-        assert inspect.isasyncgenfunction(fn) or inspect.isgeneratorfunction(fn)
+        assert _is_async(fn)
 
         start_time = int(round(time.time() * 1000))
         attempt_number = 1
