@@ -287,8 +287,9 @@ class Retrying(object):
                 self._before_attempts(attempt_number)
 
             try:
-                result = yield from self._deterministic_generation(fn, *args, **kwargs)
-                attempt = Attempt(result, attempt_number, False)
+                for d in self._deterministic_generation(fn, *args, **kwargs):
+                    yield d
+                attempt = Attempt(None, attempt_number, False)
             except:
                 tb = sys.exc_info()
                 attempt = Attempt(tb, attempt_number, True)
