@@ -11,13 +11,13 @@
 ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
-
+import inspect
 import random
-import six
 import sys
 import time
 import traceback
 
+import six
 
 # sys.maxint / 2, since Python 3.2 doesn't have a sys.maxint...
 MAX_WAIT = 1073741823
@@ -41,8 +41,10 @@ def retry(*dargs, **dkw):
 
             @six.wraps(f)
             def wrapped_f(*args, **kw):
+                if dkw.get('deterministic_generators') and \
+                        (inspect.isasyncgenfunction(f) or inspect.isgeneratorfunction(f)):
+                    return Retrying().call_async(f, *args, **kw)
                 return Retrying().call(f, *args, **kw)
-
             return wrapped_f
 
         return wrap_simple(dargs[0])
@@ -52,6 +54,9 @@ def retry(*dargs, **dkw):
 
             @six.wraps(f)
             def wrapped_f(*args, **kw):
+                if dkw.get('deterministic_generators') and \
+                        (inspect.isasyncgenfunction(f) or inspect.isgeneratorfunction(f)):
+                    return Retrying(*dargs, **dkw).call_async(f, *args, **kw)
                 return Retrying(*dargs, **dkw).call(f, *args, **kw)
 
             return wrapped_f
@@ -77,7 +82,8 @@ class Retrying(object):
                  wait_func=None,
                  wait_jitter_max=None,
                  before_attempts=None,
-                 after_attempts=None):
+                 after_attempts=None,
+                 deterministic_generators=False):
 
         self._stop_max_attempt_number = 5 if stop_max_attempt_number is None else stop_max_attempt_number
         self._stop_max_delay = 100 if stop_max_delay is None else stop_max_delay
@@ -92,7 +98,8 @@ class Retrying(object):
         self._wait_jitter_max = 0 if wait_jitter_max is None else wait_jitter_max
         self._before_attempts = before_attempts
         self._after_attempts = after_attempts
-
+        self._deterministic_generators = deterministic_generators
+        self._deterministic_offset = -1
         # TODO add chaining of stop behaviors
         # stop behavior
         stop_funcs = []
@@ -215,6 +222,11 @@ class Retrying(object):
         return reject
 
     def call(self, fn, *args, **kwargs):
+        self._deterministic_offset = -1
+        assert not self._deterministic_generators
+
+        is_generator = inspect.isasyncgenfunction(fn) or inspect.isgeneratorfunction(fn)
+
         start_time = int(round(time.time() * 1000))
         attempt_number = 1
         while True:
@@ -222,12 +234,26 @@ class Retrying(object):
                 self._before_attempts(attempt_number)
 
             try:
-                attempt = Attempt(fn(*args, **kwargs), attempt_number, False)
+                if is_generator:
+                    # Here we do not know if the generator will fail.
+                    # In order to avoid partial yield to the caller, which would
+                    # produce partial data and then start from scratch upon error,
+                    # we have to fetch the whole data and, in case of failures, we
+                    # just recreate the result from scratch.
+                    # We could also yield data incrementally and, when retrying,
+                    # skip what we have already produced.
+                    # This would require deterministic order of element production, though.
+                    result = list(fn(*args, **kwargs))
+                else:
+                    result = fn(*args, **kwargs)
+                attempt = Attempt(result, attempt_number, False)
             except:
                 tb = sys.exc_info()
                 attempt = Attempt(tb, attempt_number, True)
-
+            
             if not self.should_reject(attempt):
+                if is_generator:
+                    return self._yelded_data(attempt)
                 return attempt.get(self._wrap_exception)
 
             if self._after_attempts:
@@ -248,6 +274,56 @@ class Retrying(object):
                 time.sleep(sleep / 1000.0)
 
             attempt_number += 1
+
+    def call_async(self, fn, *args, **kwargs):
+        self._deterministic_offset = -1
+        assert self._deterministic_generators
+        assert inspect.isasyncgenfunction(fn) or inspect.isgeneratorfunction(fn)
+
+        start_time = int(round(time.time() * 1000))
+        attempt_number = 1
+        while True:
+            if self._before_attempts:
+                self._before_attempts(attempt_number)
+
+            try:
+                result = yield from self._deterministic_generation(fn, *args, **kwargs)
+                attempt = Attempt(result, attempt_number, False)
+            except:
+                tb = sys.exc_info()
+                attempt = Attempt(tb, attempt_number, True)
+
+            if not self.should_reject(attempt):
+                return self._yelded_data(attempt)
+
+            if self._after_attempts:
+                self._after_attempts(attempt_number)
+
+            delay_since_first_attempt_ms = int(round(time.time() * 1000)) - start_time
+            if self.stop(attempt_number, delay_since_first_attempt_ms):
+                if not self._wrap_exception and attempt.has_exception:
+                    # get() on an attempt with an exception should cause it to be raised, but raise just in case
+                    raise attempt.get()
+                else:
+                    raise RetryError(attempt)
+            else:
+                sleep = self.wait(attempt_number, delay_since_first_attempt_ms)
+                if self._wait_jitter_max:
+                    jitter = random.random() * self._wait_jitter_max
+                    sleep = sleep + max(0, jitter)
+                time.sleep(sleep / 1000.0)
+
+            attempt_number += 1
+
+    def _yelded_data(self, attempt):
+        yield from attempt.get(self._wrap_exception)
+
+    def _deterministic_generation(self, fn, *args, **kwargs):
+        for i, v in enumerate(fn(*args, **kwargs)):
+            if i <= self._deterministic_offset:
+                continue
+            yield v
+            self._deterministic_offset = i
 
 
 class Attempt(object):
