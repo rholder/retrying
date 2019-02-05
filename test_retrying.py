@@ -11,7 +11,8 @@
 ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
-
+import datetime
+import sys
 import time
 import unittest
 
@@ -467,6 +468,58 @@ class TestBeforeAfterAttempts(unittest.TestCase):
         _test_after()
 
         self.assertTrue(TestBeforeAfterAttempts._attempt_number is 2)
+
+
+class TestGenerators(unittest.TestCase):
+    def test(self):
+        @retry(stop_max_delay=3000)
+        def _f(started):
+            for i in range(10):
+                if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                    raise ValueError
+                yield i
+
+        self.assertEqual(list(range(10)), list(_f(datetime.datetime.now())))
+    
+    def test_deterministic(self):
+        @retry(stop_max_delay=3000, deterministic_generators=True)
+        def _f(started):
+            for i in range(10):
+                if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                    raise ValueError
+                yield i
+        self.assertEqual(list(range(10)), list(_f(datetime.datetime.now())))
+
+    def test_deterministic_big_values(self):
+        if sys.version_info >= (3, 0):
+            safe_range = range
+        else:
+            # noinspection PyUnresolvedReferences
+            safe_range = xrange
+
+        # Do NOT use nondeterministic generators. You would get OOM.
+        @retry(stop_max_delay=3000, deterministic_generators=True)
+        def _f(started):
+            for i in safe_range(sys.maxsize):
+                if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                    raise ValueError
+                yield i
+
+        bounded_result = []
+        for i in _f(datetime.datetime.now()):
+            if i > 9:
+                break
+            bounded_result.append(i)
+        self.assertEqual(list(range(10)), bounded_result)
+
+    def test_simple(self):
+        @retry(stop_max_delay=3000)
+        def _f(started):
+            if datetime.datetime.now() - started < datetime.timedelta(seconds=2):
+                raise ValueError
+            yield 'OK'
+        self.assertEqual(['OK'], list(_f(datetime.datetime.now())))
+
 
 if __name__ == '__main__':
     unittest.main()
