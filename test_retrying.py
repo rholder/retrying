@@ -491,10 +491,16 @@ class TestGenerators(unittest.TestCase):
         self.assertEqual(list(range(10)), list(_f(datetime.datetime.now())))
 
     def test_deterministic_big_values(self):
+        if sys.version >= (3, 0):
+            safe_range = range
+        else:
+            # noinspection PyUnresolvedReferences
+            safe_range = xrange
+
         # Do NOT use nondeterministic generators. You would get OOM.
         @retry(stop_max_delay=3000, deterministic_generators=True)
         def _f(started):
-            for i in range(sys.maxsize):
+            for i in safe_range(sys.maxsize):
                 if i == 5 and datetime.datetime.now() - started < datetime.timedelta(seconds=2):
                     raise ValueError
                 yield i
