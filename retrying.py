@@ -295,8 +295,8 @@ class Retrying(object):
                 attempt = Attempt(tb, attempt_number, True)
 
             if not self.should_reject(attempt):
-                return self._yelded_data(attempt)
-
+                self._yelded_data(attempt)
+                return
             if self._after_attempts:
                 self._after_attempts(attempt_number)
 
