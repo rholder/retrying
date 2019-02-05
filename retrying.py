@@ -20,7 +20,7 @@ import traceback
 import six
 
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (3, 5):
     def _is_async(fn):
         return inspect.isasyncgenfunction(fn) or inspect.isgeneratorfunction(fn)
 else:
